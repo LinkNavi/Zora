@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/workspaces/Zora/testing/.build",
+  "command": "/usr/bin/cc  -I/workspaces/Zora/testing/.build/../include -Wall -Wextra -o CMakeFiles/testing.dir/workspaces/Zora/testing/src/main.c.o -c /workspaces/Zora/testing/src/main.c",
+  "file": "/workspaces/Zora/testing/src/main.c",
+  "output": "CMakeFiles/testing.dir/workspaces/Zora/testing/src/main.c.o"
+}
+]

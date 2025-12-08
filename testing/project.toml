@@ -1,0 +1,11 @@
+name = "testing"
+version = "0.1.0"
+type = "exec"
+
+[sources]
+dirs = ["src"]
+
+[includes]
+dirs = ["include"]
+
+[deps]
