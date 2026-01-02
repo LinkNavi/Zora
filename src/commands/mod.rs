@@ -18,3 +18,15 @@ pub mod package;
 pub mod install;
 pub mod update;
 pub mod cache;
+pub mod search;
+pub mod version;
+pub mod tree;
+pub mod verify;
+pub mod uninstall;
+
+pub mod features;
+pub mod script;
+
+
+pub mod expand;
+pub mod new_project;

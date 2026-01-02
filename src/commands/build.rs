@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -33,7 +34,6 @@ file(GLOB_RECURSE SOURCES
 {% endfor %}
 )
 
-
 {% if is_library %}
 add_library({{ name }} ${SOURCES})
 {% else %}
@@ -45,7 +45,6 @@ target_include_directories({{ name }} PRIVATE "${PROJECT_SOURCE_DIR}/../../{{ in
 {% endfor %}
 
 {% if vcpkg_packages %}
-# Find and link vcpkg packages
 {% for package in vcpkg_packages %}
 find_package({{ package }} REQUIRED)
 target_link_libraries({{ name }} PRIVATE {{ package }}::{{ package }})
@@ -53,7 +52,6 @@ target_link_libraries({{ name }} PRIVATE {{ package }}::{{ package }})
 {% endif %}
 
 {% if build_flags %}
-# Custom build flags
 target_compile_options({{ name }} PRIVATE 
 {% for flag in build_flags %}
     "{{ flag }}"
@@ -62,14 +60,12 @@ target_compile_options({{ name }} PRIVATE
 {% endif %}
 
 {% if defines %}
-# Preprocessor definitions
 {% for key, value in defines %}
 target_compile_definitions({{ name }} PRIVATE {{ key }}={{ value }})
 {% endfor %}
 {% endif %}
 
 {% if link_libs %}
-# Additional libraries
 target_link_libraries({{ name }} PRIVATE 
 {% for lib in link_libs %}
     {{ lib }}
@@ -78,41 +74,32 @@ target_link_libraries({{ name }} PRIVATE
 {% endif %}
 
 {% if lib_dirs %}
-# Library directories
 {% for lib_dir in lib_dirs %}
 target_link_directories({{ name }} PRIVATE "{{ lib_dir }}")
 {% endfor %}
 {% endif %}
+
+{% if lto %}
+set_property(TARGET {{ name }} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+{% endif %}
 "#;
 
-#[derive(Clone, Copy)]
-pub enum BuildMode {
-    Debug,
-    Release,
-}
-
-impl BuildMode {
-    pub fn as_str(&self) -> &str {
-        match self {
-            BuildMode::Debug => "debug",
-            BuildMode::Release => "release",
-        }
-    }
-
-    pub fn cmake_build_type(&self) -> &str {
-        match self {
-            BuildMode::Debug => "Debug",
-            BuildMode::Release => "Release",
-        }
-    }
-}
-
-pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Option<usize>) -> Result<()> {
+pub fn run(
+    name_opt: Option<String>,
+    mode: &str,
+    verbose: bool,
+    jobs: Option<usize>,
+    features: Vec<String>,
+    all_features: bool,
+    no_default_features: bool,
+    target: Option<String>,
+) -> Result<()> {
     if !ProjectConfig::exists() {
         bail!("project.toml not found. Run 'zora init' first.");
     }
 
     let config = ProjectConfig::load()?;
+    let profile = config.get_profile(mode);
 
     let pb = ProgressBar::new_spinner();
     pb.set_style(
@@ -123,11 +110,23 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
 
     pb.set_message("Preparing build...");
 
-    // Determine build directory
-    let build_dir = format!(".build/{}", mode.as_str());
+    // Determine enabled features
+    let mut enabled_features: HashSet<String> = HashSet::new();
+    
+    if !no_default_features {
+        enabled_features.extend(config.default_features.iter().cloned());
+    }
+    
+    if all_features {
+        enabled_features.extend(config.features.keys().cloned());
+    } else {
+        enabled_features.extend(features.into_iter());
+    }
+
+    // Build directory
+    let build_dir = format!(".build/{}", mode);
     fs::create_dir_all(&build_dir).context("failed to create build directory")?;
 
-    // Determine project name
     let project_name = name_opt.unwrap_or_else(|| config.name.clone());
 
     // Prepare CMake context
@@ -138,24 +137,40 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
     ctx.insert("include_dirs", &config.includes.dirs);
     ctx.insert("is_library", &config.is_library());
     ctx.insert("use_vcpkg", &!config.deps.is_empty());
+    ctx.insert("lto", &profile.lto);
     
-    // C++ standard
     if config.is_cpp() && !config.std.is_empty() {
         ctx.insert("cpp_std", &config.std);
     }
     
-    // C standard
     if !config.is_cpp() && !config.std.is_empty() {
         ctx.insert("c_std", &config.std);
     }
 
-    // Build configuration
-    if !config.build.flags.is_empty() {
-        ctx.insert("build_flags", &config.build.flags);
+    // Merge profile flags with build flags
+    let mut all_flags = profile.flags.clone();
+    all_flags.extend(config.build.flags.clone());
+    
+    if !all_flags.is_empty() {
+        ctx.insert("build_flags", &all_flags);
     }
-    if !config.build.defines.is_empty() {
-        ctx.insert("defines", &config.build.defines);
+
+    // Merge profile defines with build defines
+    let mut all_defines = profile.defines.clone();
+    all_defines.extend(config.build.defines.clone());
+    
+    // Add feature defines
+    for feature in &enabled_features {
+        all_defines.insert(
+            format!("FEATURE_{}", feature.to_uppercase().replace("-", "_")),
+            "1".to_string()
+        );
     }
+    
+    if !all_defines.is_empty() {
+        ctx.insert("defines", &all_defines);
+    }
+
     if !config.build.libs.is_empty() {
         ctx.insert("link_libs", &config.build.libs);
     }
@@ -163,15 +178,13 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
         ctx.insert("lib_dirs", &config.build.lib_dirs);
     }
 
-    // vcpkg packages
     if !config.deps.is_empty() {
-        let packages: Vec<&String> = config.deps.keys().collect();
+        let packages: Vec<String> = config.deps.keys().cloned().collect();
         ctx.insert("vcpkg_packages", &packages);
     }
 
     pb.set_message("Generating CMake files...");
 
-    // Render CMakeLists.txt
     let cmake_content = Tera::one_off(PROJECT_CMAKE_TEMPLATE, &ctx, false)
         .context("failed to render CMakeLists.txt template")?;
 
@@ -185,40 +198,41 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
 
     pb.set_message("Configuring project...");
 
-    // Run CMake configuration
     let mut cmake_config = Command::new("cmake");
     cmake_config
         .args(&[
             "-S", &build_dir,
             "-B", &build_dir,
             "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
-            &format!("-DCMAKE_BUILD_TYPE={}", mode.cmake_build_type()),
+            &format!("-DCMAKE_BUILD_TYPE={}", if mode == "release" { "Release" } else { "Debug" }),
         ]);
+
+    if let Some(t) = target {
+        cmake_config.arg(format!("-DCMAKE_SYSTEM_NAME={}", t));
+    }
 
     if verbose {
         cmake_config.arg("-DCMAKE_VERBOSE_MAKEFILE=ON");
     }
 
-    let status = cmake_config
-        .status()
-        .context("failed to run cmake configuration")?;
+    let status = cmake_config.status().context("failed to run cmake")?;
 
     if !status.success() {
         pb.finish_and_clear();
         bail!("CMake configuration failed");
     }
 
-    pb.set_message(format!("Building {} [{}]...", project_name, mode.as_str()));
+    pb.set_message(format!("Building {} [{}]...", project_name, mode));
 
-    // Build the project
     let mut cmake_build = Command::new("cmake");
     cmake_build.args(&["--build", &build_dir]);
 
     if let Some(j) = jobs {
         cmake_build.arg("-j").arg(j.to_string());
     } else {
-        // Use number of CPUs
-        let num_cpus = num_cpus::get();
+        let num_cpus = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
         cmake_build.arg("-j").arg(num_cpus.to_string());
     }
 
@@ -226,21 +240,18 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
         cmake_build.arg("--verbose");
     }
 
-    let status = cmake_build
-        .status()
-        .context("failed to run cmake build")?;
+    let status = cmake_build.status().context("failed to run cmake build")?;
 
     if !status.success() {
         pb.finish_and_clear();
         bail!("Build failed");
     }
 
-    // Copy artifacts to target directory
-    let target_dir = format!("target/{}", mode.as_str());
-    fs::create_dir_all(&target_dir).context("failed to create target directory")?;
+    // Copy artifacts
+    let target_dir = format!("target/{}", mode);
+    fs::create_dir_all(&target_dir)?;
 
     if config.is_library() {
-        // Copy library files
         for entry in fs::read_dir(&build_dir)? {
             let entry = entry?;
             let path = entry.path();
@@ -256,7 +267,6 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
             }
         }
     } else {
-        // Copy executable
         let exe_name = if cfg!(windows) {
             format!("{}.exe", project_name)
         } else {
@@ -267,8 +277,7 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
         let target_exe = Path::new(&target_dir).join(&exe_name);
         
         if built_exe.exists() {
-            fs::copy(&built_exe, &target_exe)
-                .context("failed to copy executable to target directory")?;
+            fs::copy(&built_exe, &target_exe)?;
             
             #[cfg(unix)]
             {
@@ -284,7 +293,7 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
         }
     }
 
-    // Symlink compile_commands.json
+    // Create compile_commands.json symlink
     let src = Path::new(&build_dir).join("compile_commands.json");
     let dst = Path::new("compile_commands.json");
 
@@ -307,16 +316,26 @@ pub fn run(name_opt: Option<String>, mode: BuildMode, verbose: bool, jobs: Optio
 
     pb.finish_and_clear();
 
-    println!("{} {} built successfully [{}]", 
+    let feature_str = if !enabled_features.is_empty() {
+        format!(" with features: {}", enabled_features.iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(", "))
+    } else {
+        String::new()
+    };
+
+    println!("{} {} built successfully [{}]{}", 
         "✓".green().bold(), 
         project_name.bright_yellow(),
-        mode.as_str()
+        mode,
+        feature_str
     );
 
     Ok(())
 }
 
-pub fn get_executable_path(name_opt: Option<String>, mode: BuildMode) -> Result<std::path::PathBuf> {
+pub fn get_executable_path(name_opt: Option<String>, mode: &str) -> Result<std::path::PathBuf> {
     let config = ProjectConfig::load()?;
     let project_name = name_opt.unwrap_or_else(|| config.name.clone());
 
@@ -326,15 +345,6 @@ pub fn get_executable_path(name_opt: Option<String>, mode: BuildMode) -> Result<
         project_name
     };
 
-    let target_dir = format!("target/{}", mode.as_str());
+    let target_dir = format!("target/{}", mode);
     Ok(Path::new(&target_dir).join(exe_name))
-}
-
-// Helper function to get number of CPUs
-mod num_cpus {
-    pub fn get() -> usize {
-        std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
-    }
 }

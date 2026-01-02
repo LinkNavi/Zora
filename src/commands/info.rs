@@ -23,7 +23,7 @@ pub fn run() -> Result<()> {
     if !config.deps.is_empty() {
         println!("\n{}", "Dependencies".bright_cyan());
         for (name, version) in &config.deps {
-            println!("  • {} = {}", name, version);
+            println!("  • {} = {:?}", name, version);
         }
     }
 

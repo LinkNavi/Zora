@@ -18,9 +18,9 @@ pub fn run(tree: bool) -> Result<()> {
     } else {
         for (name, version) in &config.deps {
             if tree {
-                println!("├── {} {}", name.bright_yellow(), version);
+                println!("├── {} {:?}", name.bright_yellow(), version);
             } else {
-                println!("{} = {}", name, version);
+                println!("{} = {:?}", name, version);
             }
         }
     }

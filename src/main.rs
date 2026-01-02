@@ -15,102 +15,125 @@ struct Cli {
 enum Commands {
     /// Initialize a new zora project
     Init {
-        /// Project name (defaults to current directory name)
         #[arg(short, long)]
         name: Option<String>,
-        
-        /// Initialize as a C++ project instead of C
         #[arg(long)]
         cpp: bool,
-        
-        /// Initialize as a library instead of executable
         #[arg(long)]
         lib: bool,
     },
 
+    /// Create a new zora project
+    New {
+        path: String,
+        #[arg(long)]
+        cpp: bool,
+        #[arg(long)]
+        lib: bool,
+        #[arg(long)]
+        name: Option<String>,
+    },
+
     /// Build the project
     Build {
-        /// Project name (defaults to current directory name)
         #[arg(short, long)]
         name: Option<String>,
-        
-        /// Build in release mode with optimizations
         #[arg(short, long)]
         release: bool,
-        
-        /// Enable verbose output
+        #[arg(long)]
+        profile: Option<String>,
         #[arg(short, long)]
         verbose: bool,
-        
-        /// Number of parallel jobs (default: number of CPUs)
         #[arg(short, long)]
         jobs: Option<usize>,
+        #[arg(long)]
+        features: Vec<String>,
+        #[arg(long)]
+        all_features: bool,
+        #[arg(long)]
+        no_default_features: bool,
+        #[arg(long)]
+        target: Option<String>,
     },
 
     /// Build and run the project
     Run {
-        /// Project name (defaults to current directory name)
         #[arg(short, long)]
         name: Option<String>,
-        
-        /// Run in release mode with optimizations
         #[arg(short, long)]
         release: bool,
-
-        /// Arguments to pass to the program
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        features: Vec<String>,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
 
     /// Add vcpkg packages to the project
     Add {
-        /// Package names to install from vcpkg
         packages: Vec<String>,
+        #[arg(long)]
+        dev: bool,
+        #[arg(long)]
+        optional: bool,
+        #[arg(long)]
+        features: Vec<String>,
     },
 
     /// Remove vcpkg packages from the project
     Remove {
-        /// Package names to remove
         packages: Vec<String>,
+        #[arg(long)]
+        dev: bool,
     },
 
     /// Clean build artifacts
     Clean {
-        /// Also clean vcpkg packages
         #[arg(long)]
         all: bool,
+        #[arg(long)]
+        release: bool,
+        #[arg(long)]
+        target_dir: bool,
     },
 
     /// Run tests
     Test {
-        /// Run in release mode
         #[arg(short, long)]
         release: bool,
-        
-        /// Run specific test
         #[arg(short, long)]
         test: Option<String>,
+        #[arg(long)]
+        no_fail_fast: bool,
+        #[arg(trailing_var_arg = true)]
+        testargs: Vec<String>,
     },
 
     /// Check project without building
     Check {
-        /// Enable verbose output
         #[arg(short, long)]
         verbose: bool,
+        #[arg(long)]
+        all_features: bool,
     },
 
     /// Format source code using clang-format
     Fmt {
-        /// Check formatting without modifying files
         #[arg(long)]
         check: bool,
+        #[arg(long)]
+        all: bool,
     },
 
     /// Lint source code using clang-tidy
     Lint {
-        /// Automatically fix issues
         #[arg(long)]
         fix: bool,
+        #[arg(long)]
+        allow: Vec<String>,
+        #[arg(long)]
+        deny: Vec<String>,
     },
 
     /// Show project information
@@ -118,61 +141,74 @@ enum Commands {
 
     /// List all dependencies
     Deps {
-        /// Show dependency tree
         #[arg(long)]
         tree: bool,
     },
 
+    /// Search for packages in vcpkg
+    Search {
+        query: String,
+    },
+
     /// Create a new source file
-    New {
-        /// File type (source, header, test)
+    New_ {
         #[arg(value_name = "TYPE")]
         file_type: String,
-        
-        /// File name
         #[arg(value_name = "NAME")]
         name: String,
     },
 
     /// Benchmark the project
     Bench {
-        /// Run specific benchmark
         #[arg(short, long)]
         bench: Option<String>,
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
     },
 
     /// Generate documentation
     Doc {
-        /// Open documentation in browser
         #[arg(long)]
         open: bool,
+        #[arg(long)]
+        no_deps: bool,
     },
 
     /// Watch for changes and rebuild
     Watch {
-        /// Command to run on changes (build, test, run)
         #[arg(default_value = "build")]
         command: String,
+        #[arg(short, long)]
+        clear: bool,
     },
 
     /// Package the project for distribution
     Package {
-        /// Output format (tar, zip)
         #[arg(short, long, default_value = "tar")]
         format: String,
+        #[arg(long)]
+        no_verify: bool,
     },
 
     /// Install the built executable
     Install {
-        /// Installation directory
+        #[arg(long)]
+        prefix: Option<String>,
+        #[arg(long)]
+        root: Option<String>,
+    },
+
+    /// Uninstall the executable
+    Uninstall {
         #[arg(long)]
         prefix: Option<String>,
     },
 
     /// Update vcpkg packages
     Update {
-        /// Update specific packages only
         packages: Vec<String>,
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Show build cache statistics
@@ -180,14 +216,81 @@ enum Commands {
         #[command(subcommand)]
         action: CacheAction,
     },
+
+    /// Display version and project info
+    Version {
+        #[arg(long)]
+        verbose: bool,
+    },
+
+    /// Create or work with workspaces
+    Workspace {
+        #[command(subcommand)]
+        action: WorkspaceAction,
+    },
+
+    /// Manage project features
+    Features {
+        #[command(subcommand)]
+        action: FeatureAction,
+    },
+
+    /// Run arbitrary scripts
+    Script {
+        name: String,
+    },
+
+    /// Publish package to registry
+    Publish {
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        registry: Option<String>,
+    },
+
+    /// Verify project integrity
+    Verify {
+        #[arg(long)]
+        locked: bool,
+    },
+
+    /// Generate shell completions
+    Completions {
+        shell: String,
+    },
+
+    /// Expand macros or show expanded code
+    Expand {
+        file: Option<String>,
+    },
+
+    /// Show build tree
+    Tree {
+        #[arg(long)]
+        depth: Option<usize>,
+    },
 }
 
 #[derive(Subcommand)]
 enum CacheAction {
-    /// Show cache statistics
     Stats,
-    /// Clear the cache
     Clear,
+    Prune,
+}
+
+#[derive(Subcommand)]
+enum WorkspaceAction {
+    Init,
+    Add { path: String },
+    Remove { path: String },
+    List,
+}
+
+#[derive(Subcommand)]
+enum FeatureAction {
+    List,
+    Enable { features: Vec<String> },
+    Disable { features: Vec<String> },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -197,56 +300,52 @@ fn main() -> anyhow::Result<()> {
         Commands::Init { name, cpp, lib } => {
             commands::init::run(name, cpp, lib)?
         },
-        
-        Commands::Build { name, release, verbose, jobs } => {
-            let mode = if release {
-                commands::build::BuildMode::Release
-            } else {
-                commands::build::BuildMode::Debug
-            };
-            commands::build::run(name, mode, verbose, jobs)?
+
+        Commands::New { path, cpp, lib, name } => {
+            commands::new_project::run(path, cpp, lib, name)?
         },
         
-        Commands::Run { name, release, args } => {
-            let mode = if release {
-                commands::build::BuildMode::Release
-            } else {
-                commands::build::BuildMode::Debug
-            };
-            commands::run::run(name, mode, false, None, args)?
+        Commands::Build { name, release, profile, verbose, jobs, features, all_features, no_default_features, target } => {
+            let mode = profile.as_deref()
+                .or(if release { Some("release") } else { Some("dev") })
+                .unwrap();
+            commands::build::run(name, mode, verbose, jobs, features, all_features, no_default_features, target)?
+        },
+        
+        Commands::Run { name, release, profile, features, args } => {
+            let mode = profile.as_deref()
+                .or(if release { Some("release") } else { Some("dev") })
+                .unwrap();
+            commands::run::run(name, mode, features, args)?
         },
 
-        Commands::Add { packages } => {
-            commands::add::run(packages)?
+        Commands::Add { packages, dev, optional, features } => {
+            commands::add::run(packages, dev, optional, features)?
         },
 
-        Commands::Remove { packages } => {
-            commands::remove::run(packages)?
+        Commands::Remove { packages, dev } => {
+            commands::remove::run(packages, dev)?
         },
 
-        Commands::Clean { all } => {
-            commands::clean::run(all)?
+        Commands::Clean { all, release, target_dir } => {
+            commands::clean::run(all, release, target_dir)?
         },
 
-        Commands::Test { release, test } => {
-            let mode = if release {
-                commands::build::BuildMode::Release
-            } else {
-                commands::build::BuildMode::Debug
-            };
-            commands::test::run(mode, test)?
+        Commands::Test { release, test, no_fail_fast, testargs } => {
+            let mode = if release { "release" } else { "dev" };
+            commands::test::run(mode, test, no_fail_fast, testargs)?
         },
 
-        Commands::Check { verbose } => {
-            commands::check::run(verbose)?
+        Commands::Check { verbose, all_features } => {
+            commands::check::run(verbose, all_features)?
         },
 
-        Commands::Fmt { check } => {
-            commands::fmt::run(check)?
+        Commands::Fmt { check, all } => {
+            commands::fmt::run(check, all)?
         },
 
-        Commands::Lint { fix } => {
-            commands::lint::run(fix)?
+        Commands::Lint { fix, allow, deny } => {
+            commands::lint::run(fix, allow, deny)?
         },
 
         Commands::Info => {
@@ -257,39 +356,93 @@ fn main() -> anyhow::Result<()> {
             commands::deps::run(tree)?
         },
 
-        Commands::New { file_type, name } => {
+        Commands::Search { query } => {
+            commands::search::run(query)?
+        },
+
+        Commands::New_ { file_type, name } => {
             commands::new::run(&file_type, &name)?
         },
 
-        Commands::Bench { bench } => {
-            commands::bench::run(bench)?
+        Commands::Bench { bench, args } => {
+            commands::bench::run(bench, args)?
         },
 
-        Commands::Doc { open } => {
-            commands::doc::run(open)?
+        Commands::Doc { open, no_deps } => {
+            commands::doc::run(open, no_deps)?
         },
 
-        Commands::Watch { command } => {
-            commands::watch::run(&command)?
+        Commands::Watch { command, clear } => {
+            commands::watch::run(&command, clear)?
         },
 
-        Commands::Package { format } => {
-            commands::package::run(&format)?
+        Commands::Package { format, no_verify } => {
+            commands::package::run(&format, no_verify)?
         },
 
-        Commands::Install { prefix } => {
-            commands::install::run(prefix)?
+        Commands::Install { prefix, root } => {
+            commands::install::run(prefix.or(root))?
         },
 
-        Commands::Update { packages } => {
-            commands::update::run(packages)?
+        Commands::Uninstall { prefix } => {
+            commands::uninstall::run(prefix)?
+        },
+
+        Commands::Update { packages, dry_run } => {
+            commands::update::run(packages, dry_run)?
         },
 
         Commands::Cache { action } => {
             match action {
                 CacheAction::Stats => commands::cache::stats()?,
                 CacheAction::Clear => commands::cache::clear()?,
+                CacheAction::Prune => commands::cache::prune()?,
             }
+        },
+
+        Commands::Version { verbose } => {
+            commands::version::run(verbose)?
+        },
+
+        Commands::Workspace { action } => {
+            match action {
+                WorkspaceAction::Init => commands::workspace::init()?,
+                WorkspaceAction::Add { path } => commands::workspace::add(path)?,
+                WorkspaceAction::Remove { path } => commands::workspace::remove(path)?,
+                WorkspaceAction::List => commands::workspace::list()?,
+            }
+        },
+
+        Commands::Features { action } => {
+            match action {
+                FeatureAction::List => commands::features::list()?,
+                FeatureAction::Enable { features } => commands::features::enable(features)?,
+                FeatureAction::Disable { features } => commands::features::disable(features)?,
+            }
+        },
+
+        Commands::Script { name } => {
+            commands::script::run(name)?
+        },
+
+        Commands::Publish { dry_run, registry } => {
+            commands::publish::run(dry_run, registry)?
+        },
+
+        Commands::Verify { locked } => {
+            commands::verify::run(locked)?
+        },
+
+        Commands::Completions { shell } => {
+            commands::completions::run(shell)?
+        },
+
+        Commands::Expand { file } => {
+            commands::expand::run(file)?
+        },
+
+        Commands::Tree { depth } => {
+            commands::tree::run(depth)?
         },
     }
 
