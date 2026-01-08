@@ -9,6 +9,31 @@ use tera::{Context as TeraContext, Tera};
 
 use crate::config::ProjectConfig;
 
+// Add BuildMode enum
+#[derive(Debug, Clone, Copy)]
+pub enum BuildMode {
+    Dev,
+    Release,
+}
+
+impl BuildMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            BuildMode::Dev => "dev",
+            BuildMode::Release => "release",
+        }
+    }
+}
+
+impl From<&str> for BuildMode {
+    fn from(s: &str) -> Self {
+        match s {
+            "release" => BuildMode::Release,
+            _ => BuildMode::Dev,
+        }
+    }
+}
+
 const PROJECT_CMAKE_TEMPLATE: &str = r#"
 cmake_minimum_required(VERSION 3.10)
 project({{ name }} {{ language }})

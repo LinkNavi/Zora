@@ -135,7 +135,7 @@ pub struct ProfilesConfig {
     pub custom: HashMap<String, ProfileConfig>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ProfileConfig {
     #[serde(default = "default_opt_level")]
     pub opt_level: String,

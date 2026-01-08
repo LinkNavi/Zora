@@ -2,21 +2,19 @@ use anyhow::{bail, Context, Result};
 use colored::Colorize;
 use std::process::Command;
 
-use super::build::{self, BuildMode};
-
 pub fn run(
     name_opt: Option<String>, 
-    mode: BuildMode, 
+    mode: &str,
     verbose: bool,
     jobs: Option<usize>,
     args: Vec<String>
 ) -> Result<()> {
     // First, build the project
     println!("{}", "Building project...".bright_cyan());
-    build::run(name_opt.clone(), mode, verbose, jobs)?;
+    super::build::run(name_opt.clone(), mode, verbose, jobs, vec![], false, false, None)?;
 
     // Get the executable path
-    let exe_path = build::get_executable_path(name_opt, mode)?;
+    let exe_path = super::build::get_executable_path(name_opt, mode)?;
 
     if !exe_path.exists() {
         bail!("Executable not found at: {}", exe_path.display());

@@ -23,10 +23,10 @@ pub mod version;
 pub mod tree;
 pub mod verify;
 pub mod uninstall;
-
 pub mod features;
 pub mod script;
-
-
 pub mod expand;
 pub mod new_project;
+pub mod workspace;
+pub mod publish;
+pub mod completions;

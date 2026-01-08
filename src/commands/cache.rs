@@ -56,6 +56,37 @@ pub fn clear() -> Result<()> {
     Ok(())
 }
 
+pub fn prune() -> Result<()> {
+    println!("{}", "Pruning old build artifacts...".bright_cyan());
+
+    let mut pruned = 0;
+
+    // Remove old build directories (except current)
+    if Path::new(".build").exists() {
+        for entry in fs::read_dir(".build")? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                // Keep dev and release, remove others
+                if dir_name != "dev" && dir_name != "release" {
+                    fs::remove_dir_all(&path)?;
+                    pruned += 1;
+                    println!("  {} {}", "Pruned".yellow(), path.display());
+                }
+            }
+        }
+    }
+
+    if pruned > 0 {
+        println!("\n{} Pruned {} old artifact(s)", "✓".green().bold(), pruned);
+    } else {
+        println!("{}", "Nothing to prune".yellow());
+    }
+
+    Ok(())
+}
+
 fn dir_size(path: impl AsRef<Path>) -> Result<u64> {
     let mut size = 0;
     if path.as_ref().is_dir() {

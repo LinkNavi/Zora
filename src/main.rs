@@ -1,4 +1,3 @@
-use anyhow::Context;
 use clap::{Parser, Subcommand};
 
 mod commands;
@@ -62,10 +61,10 @@ enum Commands {
         name: Option<String>,
         #[arg(short, long)]
         release: bool,
-        #[arg(long)]
-        profile: Option<String>,
-        #[arg(long)]
-        features: Vec<String>,
+        #[arg(short, long)]
+        verbose: bool,
+        #[arg(short, long)]
+        jobs: Option<usize>,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -73,29 +72,17 @@ enum Commands {
     /// Add vcpkg packages to the project
     Add {
         packages: Vec<String>,
-        #[arg(long)]
-        dev: bool,
-        #[arg(long)]
-        optional: bool,
-        #[arg(long)]
-        features: Vec<String>,
     },
 
     /// Remove vcpkg packages from the project
     Remove {
         packages: Vec<String>,
-        #[arg(long)]
-        dev: bool,
     },
 
     /// Clean build artifacts
     Clean {
         #[arg(long)]
         all: bool,
-        #[arg(long)]
-        release: bool,
-        #[arg(long)]
-        target_dir: bool,
     },
 
     /// Run tests
@@ -104,36 +91,24 @@ enum Commands {
         release: bool,
         #[arg(short, long)]
         test: Option<String>,
-        #[arg(long)]
-        no_fail_fast: bool,
-        #[arg(trailing_var_arg = true)]
-        testargs: Vec<String>,
     },
 
     /// Check project without building
     Check {
         #[arg(short, long)]
         verbose: bool,
-        #[arg(long)]
-        all_features: bool,
     },
 
     /// Format source code using clang-format
     Fmt {
         #[arg(long)]
         check: bool,
-        #[arg(long)]
-        all: bool,
     },
 
     /// Lint source code using clang-tidy
     Lint {
         #[arg(long)]
         fix: bool,
-        #[arg(long)]
-        allow: Vec<String>,
-        #[arg(long)]
-        deny: Vec<String>,
     },
 
     /// Show project information
@@ -162,40 +137,30 @@ enum Commands {
     Bench {
         #[arg(short, long)]
         bench: Option<String>,
-        #[arg(trailing_var_arg = true)]
-        args: Vec<String>,
     },
 
     /// Generate documentation
     Doc {
         #[arg(long)]
         open: bool,
-        #[arg(long)]
-        no_deps: bool,
     },
 
     /// Watch for changes and rebuild
     Watch {
         #[arg(default_value = "build")]
         command: String,
-        #[arg(short, long)]
-        clear: bool,
     },
 
     /// Package the project for distribution
     Package {
         #[arg(short, long, default_value = "tar")]
         format: String,
-        #[arg(long)]
-        no_verify: bool,
     },
 
     /// Install the built executable
     Install {
         #[arg(long)]
         prefix: Option<String>,
-        #[arg(long)]
-        root: Option<String>,
     },
 
     /// Uninstall the executable
@@ -207,8 +172,6 @@ enum Commands {
     /// Update vcpkg packages
     Update {
         packages: Vec<String>,
-        #[arg(long)]
-        dry_run: bool,
     },
 
     /// Show build cache statistics
@@ -312,40 +275,38 @@ fn main() -> anyhow::Result<()> {
             commands::build::run(name, mode, verbose, jobs, features, all_features, no_default_features, target)?
         },
         
-        Commands::Run { name, release, profile, features, args } => {
-            let mode = profile.as_deref()
-                .or(if release { Some("release") } else { Some("dev") })
-                .unwrap();
-            commands::run::run(name, mode, features, args)?
-        },
-
-        Commands::Add { packages, dev, optional, features } => {
-            commands::add::run(packages, dev, optional, features)?
-        },
-
-        Commands::Remove { packages, dev } => {
-            commands::remove::run(packages, dev)?
-        },
-
-        Commands::Clean { all, release, target_dir } => {
-            commands::clean::run(all, release, target_dir)?
-        },
-
-        Commands::Test { release, test, no_fail_fast, testargs } => {
+        Commands::Run { name, release, verbose, jobs, args } => {
             let mode = if release { "release" } else { "dev" };
-            commands::test::run(mode, test, no_fail_fast, testargs)?
+            commands::run::run(name, mode, verbose, jobs, args)?
         },
 
-        Commands::Check { verbose, all_features } => {
-            commands::check::run(verbose, all_features)?
+        Commands::Add { packages } => {
+            commands::add::run(packages)?
         },
 
-        Commands::Fmt { check, all } => {
-            commands::fmt::run(check, all)?
+        Commands::Remove { packages } => {
+            commands::remove::run(packages)?
         },
 
-        Commands::Lint { fix, allow, deny } => {
-            commands::lint::run(fix, allow, deny)?
+        Commands::Clean { all } => {
+            commands::clean::run(all)?
+        },
+
+        Commands::Test { release, test } => {
+            let mode = if release { "release" } else { "dev" };
+            commands::test::run(mode, test)?
+        },
+
+        Commands::Check { verbose } => {
+            commands::check::run(verbose)?
+        },
+
+        Commands::Fmt { check } => {
+            commands::fmt::run(check)?
+        },
+
+        Commands::Lint { fix } => {
+            commands::lint::run(fix)?
         },
 
         Commands::Info => {
@@ -364,32 +325,32 @@ fn main() -> anyhow::Result<()> {
             commands::new::run(&file_type, &name)?
         },
 
-        Commands::Bench { bench, args } => {
-            commands::bench::run(bench, args)?
+        Commands::Bench { bench } => {
+            commands::bench::run(bench)?
         },
 
-        Commands::Doc { open, no_deps } => {
-            commands::doc::run(open, no_deps)?
+        Commands::Doc { open } => {
+            commands::doc::run(open)?
         },
 
-        Commands::Watch { command, clear } => {
-            commands::watch::run(&command, clear)?
+        Commands::Watch { command } => {
+            commands::watch::run(&command)?
         },
 
-        Commands::Package { format, no_verify } => {
-            commands::package::run(&format, no_verify)?
+        Commands::Package { format } => {
+            commands::package::run(&format)?
         },
 
-        Commands::Install { prefix, root } => {
-            commands::install::run(prefix.or(root))?
+        Commands::Install { prefix } => {
+            commands::install::run(prefix)?
         },
 
         Commands::Uninstall { prefix } => {
             commands::uninstall::run(prefix)?
         },
 
-        Commands::Update { packages, dry_run } => {
-            commands::update::run(packages, dry_run)?
+        Commands::Update { packages } => {
+            commands::update::run(packages)?
         },
 
         Commands::Cache { action } => {

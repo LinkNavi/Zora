@@ -6,9 +6,8 @@ use std::process::Command;
 use walkdir::WalkDir;
 
 use crate::config::ProjectConfig;
-use super::build::BuildMode;
 
-pub fn run(mode: BuildMode, specific_test: Option<String>) -> Result<()> {
+pub fn run(mode: &str, specific_test: Option<String>) -> Result<()> {
     if !ProjectConfig::exists() {
         bail!("project.toml not found. Run 'zora init' first.");
     }
@@ -70,7 +69,7 @@ pub fn run(mode: BuildMode, specific_test: Option<String>) -> Result<()> {
         println!("\n{} {}...", "Testing".bright_blue(), test_name);
 
         // Compile test
-        let output_dir = format!("target/{}/tests", mode.as_str());
+        let output_dir = format!("target/{}/tests", mode);
         fs::create_dir_all(&output_dir)?;
 
         let output_file = format!("{}/{}", output_dir, test_name);
@@ -84,7 +83,7 @@ pub fn run(mode: BuildMode, specific_test: Option<String>) -> Result<()> {
             .arg("include");
 
         // Add optimization flags
-        if matches!(mode, BuildMode::Release) {
+        if mode == "release" {
             cmd.arg("-O2");
         }
 
