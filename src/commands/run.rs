@@ -11,7 +11,7 @@ pub fn run(
 ) -> Result<()> {
     // First, build the project
     println!("{}", "Building project...".bright_cyan());
-    super::build::run(name_opt.clone(), mode, verbose, jobs, vec![], false, false, None)?;
+    super::build::run(name_opt.clone(), mode, verbose, jobs, vec![], false, false, None, false)?;
 
     // Get the executable path
     let exe_path = super::build::get_executable_path(name_opt, mode)?;

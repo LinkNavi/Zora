@@ -119,6 +119,9 @@ pub struct BuildConfig {
     pub warnings: Vec<String>,
     #[serde(default)]
     pub target: Option<String>,
+    // NEW: Add static linking option
+    #[serde(default)]
+    pub static_link: bool,
 }
 
 fn default_optimization() -> String {

@@ -53,6 +53,8 @@ enum Commands {
         no_default_features: bool,
         #[arg(long)]
         target: Option<String>,
+#[arg(long)]
+    static_linking: bool,
     },
 
     /// Build and run the project
@@ -268,11 +270,11 @@ fn main() -> anyhow::Result<()> {
             commands::new_project::run(path, cpp, lib, name)?
         },
         
-        Commands::Build { name, release, profile, verbose, jobs, features, all_features, no_default_features, target } => {
+Commands::Build { name, release, profile, verbose, jobs, features, all_features, no_default_features, target, static_linking } => {
             let mode = profile.as_deref()
                 .or(if release { Some("release") } else { Some("dev") })
                 .unwrap();
-            commands::build::run(name, mode, verbose, jobs, features, all_features, no_default_features, target)?
+            commands::build::run(name, mode, verbose, jobs, features, all_features, no_default_features, target, static_linking)?
         },
         
         Commands::Run { name, release, verbose, jobs, args } => {

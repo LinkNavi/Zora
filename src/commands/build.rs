@@ -42,6 +42,13 @@ project({{ name }} {{ language }})
 set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 {% endif %}
 
+{% if static_link %}
+# Static linking configuration
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+{% endif %}
+
 {% if cpp_std %}
 set(CMAKE_CXX_STANDARD {{ cpp_std }})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,7 +67,7 @@ file(GLOB_RECURSE SOURCES
 )
 
 {% if is_library %}
-add_library({{ name }} ${SOURCES})
+add_library({{ name }} {% if static_link %}STATIC{% endif %} ${SOURCES})
 {% else %}
 add_executable({{ name }} ${SOURCES})
 {% endif %}
@@ -109,6 +116,7 @@ set_property(TARGET {{ name }} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 {% endif %}
 "#;
 
+
 pub fn run(
     name_opt: Option<String>,
     mode: &str,
@@ -118,6 +126,7 @@ pub fn run(
     all_features: bool,
     no_default_features: bool,
     target: Option<String>,
+static_link: bool,
 ) -> Result<()> {
     if !ProjectConfig::exists() {
         bail!("project.toml not found. Run 'zora init' first.");
@@ -163,7 +172,7 @@ pub fn run(
     ctx.insert("is_library", &config.is_library());
     ctx.insert("use_vcpkg", &!config.deps.is_empty());
     ctx.insert("lto", &profile.lto);
-    
+ctx.insert("static_link", &config.build.static_link);    
     if config.is_cpp() && !config.std.is_empty() {
         ctx.insert("cpp_std", &config.std);
     }
