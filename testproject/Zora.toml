@@ -1,0 +1,9 @@
+[project]
+name = "testproject"
+version = "0.1.0"
+
+[target.testproject]
+type = "bin"
+sources = ["src/**/*.cpp"]
+include_dirs = ["include"]
+compiler_flags = []

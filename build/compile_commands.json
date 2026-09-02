@@ -1,0 +1,50 @@
+[
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Clean.cpp.o -c /home/link/Programming/Zora/src/Commands/Clean.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Clean.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Clean.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Dep.cpp.o -c /home/link/Programming/Zora/src/Commands/Dep.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Dep.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Dep.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Fetch.cpp.o -c /home/link/Programming/Zora/src/Commands/Fetch.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Fetch.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Fetch.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Glob.cpp.o -c /home/link/Programming/Zora/src/Commands/Glob.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Glob.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Glob.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Help.cpp.o -c /home/link/Programming/Zora/src/Commands/Help.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Help.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Help.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Init.cpp.o -c /home/link/Programming/Zora/src/Commands/Init.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Init.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Init.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/Commands/Run.cpp.o -c /home/link/Programming/Zora/src/Commands/Run.cpp",
+  "file": "/home/link/Programming/Zora/src/Commands/Run.cpp",
+  "output": "CMakeFiles/zora.dir/src/Commands/Run.cpp.o"
+},
+{
+  "directory": "/home/link/Programming/Zora/build",
+  "command": "/usr/bin/clang++  -I/home/link/Programming/Zora/include -O2 -DNDEBUG -std=gnu++23 -Wall -Wextra -Wpedantic -march=native -o CMakeFiles/zora.dir/src/main.cpp.o -c /home/link/Programming/Zora/src/main.cpp",
+  "file": "/home/link/Programming/Zora/src/main.cpp",
+  "output": "CMakeFiles/zora.dir/src/main.cpp.o"
+}
+]

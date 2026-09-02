@@ -1,0 +1,7 @@
+/home/link/Programming/Zora/build/CMakeFiles/zora.dir
+/home/link/Programming/Zora/build/CMakeFiles/edit_cache.dir
+/home/link/Programming/Zora/build/CMakeFiles/rebuild_cache.dir
+/home/link/Programming/Zora/build/CMakeFiles/list_install_components.dir
+/home/link/Programming/Zora/build/CMakeFiles/install.dir
+/home/link/Programming/Zora/build/CMakeFiles/install/local.dir
+/home/link/Programming/Zora/build/CMakeFiles/install/strip.dir

@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/link/Programming/Zora/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

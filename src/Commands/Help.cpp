@@ -1,0 +1,37 @@
+#include "Commands.hpp"
+#include <cstdio>
+
+void printHelp() {
+    std::puts(
+        "Zora - A C++ build system\n"
+        "\n"
+        "Usage: zora <command> [options]\n"
+        "\n"
+        "Commands:\n"
+        "  init             Set up Zora.toml in the current directory\n"
+        "  new <name>       Scaffold a new project\n"
+        "  build            Build all targets\n"
+        "  build -p <name>  Build a specific workspace member\n"
+        "  run <target>     Build and run a binary target\n"
+        "  clean            Remove build artifacts\n"
+        "  fetch            Fetch all dependencies\n"
+        "  glob             Show globbed source files\n"
+        "  script <name>    Run a project script\n"
+        "  dep <sub>        Manage dependencies (see below)\n"
+        "  help             Show this message\n"
+        "\n"
+        "Dep subcommands:\n"
+        "  dep add <user/repo> [-t <target>]           Add a git dependency\n"
+        "  dep add -s <pkg-config-name> [-t <target>]  Add a system dependency\n"
+        "  dep add --tui [-t <target>]                 Search system packages interactively\n"
+        "  dep remove <name>                           Remove a dependency\n"
+        "  dep update [name]                           Update dependency/dependencies\n"
+        "  dep list                                    List dependencies (git + system)\n"
+        "\n"
+        "Options:\n"
+        "  --debug <0-3>  Set log level (0=silent, 3=debug)\n"
+        "  --release      Build in release mode (default)\n"
+        "  --debug-build  Build in debug mode\n"
+        "  -p <name>      Target a specific workspace member\n"
+    );
+}
