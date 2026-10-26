@@ -2,6 +2,7 @@
 // Native Hylian FFI generator.  This deliberately lives in Zora: generated
 // .hyi files are build outputs, not a second hand-maintained binding format.
 #include <clang-c/Index.h>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -14,20 +15,29 @@ namespace fs = std::filesystem;
 
 inline std::string cx(CXString s) { std::string v = clang_getCString(s) ? clang_getCString(s) : ""; clang_disposeString(s); return v; }
 inline std::string hy_type(CXType t) {
-    std::string s = cx(clang_getTypeSpelling(t));
+    // Map by the CANONICAL type so typedefs (Uint32, size_t, ...) resolve to what
+    // they really are. Width and signedness matter for FFI: a C `int` result only
+    // defines 32 bits of rax and a C `float` travels as single precision in xmm.
+    std::string s = cx(clang_getTypeSpelling(clang_getCanonicalType(t)));
+    for (const char* q : {"const ", "volatile ", "restrict "}) { size_t p; while ((p = s.find(q)) != std::string::npos) s.erase(p, strlen(q)); }
     while (!s.empty() && s[0] == ' ') s.erase(0, 1);
+    while (!s.empty() && s.back() == ' ') s.pop_back();
     if (s == "void") return "void";
-    if (s == "float" || s == "double") return "float";
+    if (s == "float") return "float32";
+    if (s == "double" || s == "long double") return "float";
+    if (s == "char *") return "str";
+    if (s.find('*') != std::string::npos) return "*void";
     if (s == "char" || s == "signed char") return "int8";
     if (s == "unsigned char") return "uint8";
-    if (s == "short" || s == "signed short") return "int16";
+    if (s == "short") return "int16";
     if (s == "unsigned short") return "uint16";
-    if (s == "char *" || s == "const char *") return "str";
-    if (s.find('*') != std::string::npos) return "*void";
+    if (s == "int") return "int32";
+    if (s == "unsigned int" || s == "unsigned") return "uint32";
+    if (s == "long" || s == "long long") return "int64";
+    if (s == "unsigned long" || s == "unsigned long long") return "uint64";
     if (s == "_Bool" || s == "bool") return "bool";
-    if (s.find("unsigned") != std::string::npos) return "uint";
-    if (s == "short" || s == "int" || s == "long" || s == "long long") return "int";
     if (s.rfind("struct ", 0) == 0) return s.substr(7);
+    if (s.rfind("enum ", 0) == 0) return "int32";
     return s.empty() ? "*void" : s;
 }
 struct HyCtx { std::ofstream* out; std::string file; std::set<std::string> seen; };

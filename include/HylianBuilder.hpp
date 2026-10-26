@@ -165,6 +165,30 @@ inline fs::path find_hylian_stdlib_dir() {
     return {};
 }
 
+// Newest modification time among everything a Hylian object depends on
+// besides the program's own sources: the compiler binary and every source
+// file in the stdlib tree. A cached object older than this was built by a
+// different compiler or against different stdlib code (a stale mem.o once
+// caused infinite arena_init recursion), so it must be rebuilt. Checking
+// only the module's own .hy file missed edits to the modules it includes.
+inline TimePoint toolchain_mtime(const std::string& hylian_bin, const fs::path& stdlib_dir) {
+    TimePoint newest = TimePoint::min();
+    std::error_code ec;
+    fs::path bin(hylian_bin);
+    if (fs::exists(bin, ec)) newest = mtime(bin);
+    if (stdlib_dir.empty() || !fs::is_directory(stdlib_dir, ec)) return newest;
+    for (auto it = fs::recursive_directory_iterator(stdlib_dir, ec);
+         !ec && it != fs::recursive_directory_iterator(); it.increment(ec)) {
+        if (!it->is_regular_file(ec)) continue;
+        auto ext = it->path().extension();
+        if (ext == ".hy" || ext == ".hyi" || ext == ".c" || ext == ".h") {
+            auto t = mtime(it->path());
+            if (t > newest) newest = t;
+        }
+    }
+    return newest;
+}
+
 // Compiles (or reuses a fresh cached copy of) a stdlib module that must
 // always be linked in, regardless of what the program's own include{}
 // graph pulls in. Prefers a pre-built .o, then Hylian source (compiled
@@ -189,7 +213,7 @@ inline bool compile_always_obj(const std::string& hylian_bin, const fs::path& st
         found = true;
         fs::create_directories(cache_dir);
         out_obj = cache_dir / (stem + ".o");
-        if (fs::exists(out_obj) && mtime(out_obj) > mtime(hy_src)) return true;
+        if (fs::exists(out_obj) && mtime(out_obj) > toolchain_mtime(hylian_bin, stdlib_dir)) return true;
 
         std::string cmd = hylian_bin + " " + hy_src.string()
                          + " -o " + out_obj.string()
@@ -203,7 +227,7 @@ inline bool compile_always_obj(const std::string& hylian_bin, const fs::path& st
         found = true;
         fs::create_directories(cache_dir);
         out_obj = cache_dir / (stem + ".o");
-        if (fs::exists(out_obj) && mtime(out_obj) > mtime(c_src)) return true;
+        if (fs::exists(out_obj) && mtime(out_obj) > toolchain_mtime(hylian_bin, stdlib_dir)) return true;
 
         std::string cmd = "cc -O2 -c " + c_src.string() + " -o " + out_obj.string();
         log_debug("cmd: " + cmd);
@@ -262,6 +286,8 @@ inline bool build_hylian_target(const WorkspaceProject& proj, const Target& targ
         auto obj_time = mtime(obj);
         for (auto& f : glob_all(proj.root, {"**/*.hy"}))
             if (mtime(f) > obj_time) { stale = true; break; }
+        // ...or the compiler / stdlib it was built with changed
+        if (!stale && toolchain_mtime(hylian_bin, find_hylian_stdlib_dir()) > obj_time) stale = true;
     }
 
     // A "kernel" target has no OS underneath it to link against: it compiles
@@ -296,9 +322,11 @@ inline bool build_hylian_target(const WorkspaceProject& proj, const Target& targ
     std::vector<fs::path> extra_objs;
     if (!stdlib_dir.empty()) {
         // "mem" backs `new`/arena allocation, "runtime" backs the
-        // print/println syntax (hylian_print/hylian_println) - both are
-        // compiler-mandated regardless of what the program itself
-        // includes, so both normally always get linked in. NOT for a kernel
+        // print/println syntax (hylian_print/hylian_println), and "array"
+        // backs the array<T> syntax (hylian_array_alloc/push/get/...) - all
+        // are compiler-mandated regardless of what the program itself
+        // includes, so all normally always get linked in (array was missing,
+        // so any program using array<T> failed to link under zora). NOT for a kernel
         // target, though: both call raw Linux mmap/munmap/write syscalls
         // (see stdlib/mem.hy, stdlib/runtime.hy) that mean nothing with no
         // OS underneath. The Limine runtime object supplies freestanding-
@@ -307,7 +335,7 @@ inline bool build_hylian_target(const WorkspaceProject& proj, const Target& targ
         // hylian_print/hylian_println/hylian_int_to_str) - linking both
         // would be a straight multiple-definition error anyway.
         if (!is_kernel) {
-            for (const char* stem : {"mem", "runtime"}) {
+            for (const char* stem : {"mem", "runtime", "array"}) {
                 fs::path always_obj;
                 std::string err;
                 bool found = false;
